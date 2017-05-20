@@ -33,12 +33,6 @@ import io.github.controlwear.virtual.joystick.android.JoystickView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-
-    BluetoothSocket bSocket;
-    BufferedReader bReader;
-    BufferedWriter bWriter;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,7 +66,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-//        connectToDevice();
     }
 
     @Override
@@ -85,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
 
                     // permission was granted, yay! Do the
                     // contacts-related task you need to do.
-                    connectToDevice();
+
                 } else {
                     Toast.makeText(this,"Permission Denied!",Toast.LENGTH_SHORT).show();
                     // permission denied, boo! Disable the
@@ -100,78 +93,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void connectToDevice(View view){
-        connectToDevice();
-    }
-
-    void connectToDevice(){
-        closeAllConnections();
-        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        for (BluetoothDevice bDev : bluetoothAdapter.getBondedDevices()) {
-            if (bDev.getName().equals("HC-06")) {
-                try {
-                    bSocket = bDev.createInsecureRfcommSocketToServiceRecord(bDev.getUuids()[0].getUuid());
-                    bSocket.connect();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Log.e("",e.getMessage());
-                    try {
-                        Log.e("","trying fallback...");
-
-                        bSocket =(BluetoothSocket) bDev.getClass().getMethod("createRfcommSocket", new Class[] {int.class}).invoke(bDev,1);
-                        bSocket.connect();
-
-                        Log.e("","Connected");
-                    }
-                    catch (Exception e2) {
-                        Log.e("", "Couldn't establish Bluetooth connection!");
-                    }
-                }
-            }
-        }
-
-        if(bSocket!=null){
-            try {
-                OutputStream outputStream = bSocket.getOutputStream();
-                InputStream inStream = bSocket.getInputStream();
-
-                bReader = new BufferedReader(new InputStreamReader(inStream));
-                bWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
-                sendData("AZEE_HANDSHAKE");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     void sendData(String msg){
-        try {
-            if(bWriter!=null) {
-                bWriter.write(msg+"\n");
-                bWriter.flush();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
     }
+
 
     @Override
     protected void onPause() {
         super.onPause();
 
-        closeAllConnections();
-    }
-
-    void closeAllConnections(){
-        try {
-            if(bReader!=null)
-                bReader.close();
-            if(bWriter!=null)
-                bWriter.close();
-            if(bSocket!=null)
-                bSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 }
