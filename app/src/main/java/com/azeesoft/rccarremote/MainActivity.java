@@ -37,6 +37,7 @@ import java.util.UUID;
 import io.github.controlwear.virtual.joystick.android.JoystickView;
 
 public class MainActivity extends AppCompatActivity {
+<<<<<<< HEAD
     final String LOG_TAG = "Main Activity";
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
@@ -45,6 +46,8 @@ public class MainActivity extends AppCompatActivity {
     BufferedWriter bWriter;
 
     IPClient ipClient;
+=======
+>>>>>>> dev
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,7 +82,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-//        connectToDevice();
     }
 
     public void connect(View view){
@@ -97,6 +99,10 @@ public class MainActivity extends AppCompatActivity {
 
                     // permission was granted, yay! Do the
                     // contacts-related task you need to do.
+<<<<<<< HEAD
+=======
+
+>>>>>>> dev
                 } else {
                     Toast.makeText(this,"Permission Denied!",Toast.LENGTH_SHORT).show();
                     // permission denied, boo! Disable the
@@ -110,10 +116,24 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+<<<<<<< HEAD
+=======
+    public void connectToDevice(View view){
+    }
+
+    void sendData(String msg){
+
+    }
+
+
+>>>>>>> dev
     @Override
     protected void onPause() {
         super.onPause();
 
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> dev
 }
