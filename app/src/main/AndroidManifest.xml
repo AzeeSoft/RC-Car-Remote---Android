@@ -3,9 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.azeesoft.rccarremote">
 
-    <uses-permission android:name="android.permission.BLUETOOTH"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
-    <uses-permission android:name="android.permission.WRITE_SETTINGS"/>
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -15,6 +16,15 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity android:name=".MainActivity">
+        </activity>
+        <activity
+            android:name=".SettingsActivity"
+            android:label="@string/title_activity_settings"
+            android:parentActivityName=".NavActivity"/>
+        <activity
+            android:name=".NavActivity"
+            android:label="@string/app_name"
+            android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

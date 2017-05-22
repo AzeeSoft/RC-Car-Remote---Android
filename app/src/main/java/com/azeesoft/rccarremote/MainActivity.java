@@ -17,7 +17,12 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.EditText;
 import android.widget.Toast;
+
+import com.azeesoft.rccarremote.tools.wifi.IPClient;
+
+import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -32,12 +37,14 @@ import java.util.UUID;
 import io.github.controlwear.virtual.joystick.android.JoystickView;
 
 public class MainActivity extends AppCompatActivity {
-
+    final String LOG_TAG = "Main Activity";
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     BluetoothSocket bSocket;
     BufferedReader bReader;
     BufferedWriter bWriter;
+
+    IPClient ipClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
             public void onMove(int angle, int strength) {
                 // do whatever you want
                 Log.d("Joystick", "Right analog: Angle=" + angle + " ; Strength=" + strength);
-                sendData("AnalogV:"+angle+":"+strength+":");
+//                sendData("AnalogV:"+angle+":"+strength+":");
             }
         },200);
 
@@ -62,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
             public void onMove(int angle, int strength) {
                 // do whatever you want
                 Log.d("Joystick", "Left analog: Angle=" + angle + " ; Strength=" + strength);
-                sendData("AnalogH:"+angle+":"+strength+":");
+//                sendData("AnalogH:"+angle+":"+strength+":");
             }
         },200);
 
@@ -75,6 +82,11 @@ public class MainActivity extends AppCompatActivity {
 //        connectToDevice();
     }
 
+    public void connect(View view){
+        EditText editText = (EditText)findViewById(R.id.editText);
+
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
@@ -85,7 +97,6 @@ public class MainActivity extends AppCompatActivity {
 
                     // permission was granted, yay! Do the
                     // contacts-related task you need to do.
-                    connectToDevice();
                 } else {
                     Toast.makeText(this,"Permission Denied!",Toast.LENGTH_SHORT).show();
                     // permission denied, boo! Disable the
@@ -99,79 +110,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void connectToDevice(View view){
-        connectToDevice();
-    }
-
-    void connectToDevice(){
-        closeAllConnections();
-        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-        for (BluetoothDevice bDev : bluetoothAdapter.getBondedDevices()) {
-            if (bDev.getName().equals("HC-06")) {
-                try {
-                    bSocket = bDev.createInsecureRfcommSocketToServiceRecord(bDev.getUuids()[0].getUuid());
-                    bSocket.connect();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Log.e("",e.getMessage());
-                    try {
-                        Log.e("","trying fallback...");
-
-                        bSocket =(BluetoothSocket) bDev.getClass().getMethod("createRfcommSocket", new Class[] {int.class}).invoke(bDev,1);
-                        bSocket.connect();
-
-                        Log.e("","Connected");
-                    }
-                    catch (Exception e2) {
-                        Log.e("", "Couldn't establish Bluetooth connection!");
-                    }
-                }
-            }
-        }
-
-        if(bSocket!=null){
-            try {
-                OutputStream outputStream = bSocket.getOutputStream();
-                InputStream inStream = bSocket.getInputStream();
-
-                bReader = new BufferedReader(new InputStreamReader(inStream));
-                bWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
-                sendData("AZEE_HANDSHAKE");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    void sendData(String msg){
-        try {
-            if(bWriter!=null) {
-                bWriter.write(msg+"\n");
-                bWriter.flush();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     protected void onPause() {
         super.onPause();
 
-        closeAllConnections();
     }
 
-    void closeAllConnections(){
-        try {
-            if(bReader!=null)
-                bReader.close();
-            if(bWriter!=null)
-                bWriter.close();
-            if(bSocket!=null)
-                bSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 }
