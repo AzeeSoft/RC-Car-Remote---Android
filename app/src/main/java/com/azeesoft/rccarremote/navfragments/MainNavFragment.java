@@ -15,6 +15,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 import android.widget.Toast;
 
 import com.azeesoft.rccarremote.R;
@@ -41,6 +43,9 @@ import io.github.controlwear.virtual.joystick.android.JoystickView;
  */
 public class MainNavFragment extends Fragment implements IPClient.OnServerDataReceivedListener {
     // TODO: Rename parameter arguments, choose names that match
+
+    static String LOG_TAG = "MainNavFragment";
+
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_TITLE = "title";
     private static final String ARG_PARAM2 = "param2";
@@ -64,7 +69,7 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
      * Use this factory method to create a new instance of
      * this fragment using the provided parameters.
      *
-     * @param title Parameter 1.
+     * @param title  Parameter 1.
      * @param param2 Parameter 2.
      * @return A new instance of fragment MainNavFragment.
      */
@@ -127,16 +132,16 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
         initializeFragment();
     }
 
-    private void initializeFragment(){
+    private void initializeFragment() {
         prepareIPClient();
         prepareBluetoothMaster();
         prepareUI();
     }
 
-    private void prepareIPClient(){
+    private void prepareIPClient() {
         ipClient = IPClient.getIPClient(getActivity());
 
-        if(ipClient.getClientSocket()== null || !ipClient.getClientSocket().isConnected()){
+        if (ipClient.getClientSocket() == null || !ipClient.getClientSocket().isConnected()) {
             showWifiErrorOverlay();
         }
 
@@ -150,20 +155,20 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
         });
     }
 
-    private void prepareBluetoothMaster(){
+    private void prepareBluetoothMaster() {
         bluetoothMaster = new RCBluetoothMaster();
     }
 
-    private void prepareUI(){
+    private void prepareUI() {
         JoystickView joystick = (JoystickView) getActivity().findViewById(R.id.joystickView);
         joystick.setOnMoveListener(new JoystickView.OnMoveListener() {
             @Override
             public void onMove(int angle, int strength) {
                 Log.d("Joystick", "Right analog: Angle=" + angle + " ; Strength=" + strength);
 
-                transmitJoystickData("AnalogV:"+angle+":"+strength+":");
+                transmitJoystickData("AnalogV:" + angle + ":" + strength + ":");
             }
-        },100);
+        }, 100);
 
         JoystickView joystick2 = (JoystickView) getActivity().findViewById(R.id.joystickView2);
         joystick2.setOnMoveListener(new JoystickView.OnMoveListener() {
@@ -171,9 +176,23 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
             public void onMove(int angle, int strength) {
                 Log.d("Joystick", "Left analog: Angle=" + angle + " ; Strength=" + strength);
 
-                transmitJoystickData("AnalogH:"+angle+":"+strength+":");
+                transmitJoystickData("AnalogH:" + angle + ":" + strength + ":");
             }
-        },100);
+        }, 100);
+
+        Switch connectDirectlyToArduino = (Switch) getActivity().findViewById(R.id.connectDirectlyToArduino);
+        connectDirectlyToArduino.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if(isChecked){
+                    bluetoothMaster.connectToRCCar();
+                    connectedViaBluetooth = true;
+                }else{
+                    bluetoothMaster.closeAllConnections();
+                    connectedViaBluetooth = false;
+                }
+            }
+        });
 
         Button closeConnectionBtn = (Button) getActivity().findViewById(R.id.closeConnectionBtn);
         closeConnectionBtn.setOnClickListener(new View.OnClickListener() {
@@ -183,16 +202,72 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
             }
         });
 
-        FloatingActionButton connectToRCCarBtn = (FloatingActionButton) getActivity().findViewById(R.id.connectToRCCarBtn);
-        connectToRCCarBtn.setOnClickListener(new View.OnClickListener() {
+        Button resetConnectionBtn = (Button) getActivity().findViewById(R.id.resetConnectionBtn);
+        resetConnectionBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                connectToRCCar();
+                JSONObject jsonObject = new JSONObject();
+                try {
+                    jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, true);
+                    jsonObject.put(CommConstants.RESPONSE_NAME_RESET_WIFI_CONNECTIONS, true);
+
+                    ipClient.sendData(jsonObject);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
             }
         });
+
+        Button restartRCWifiServer = (Button) getActivity().findViewById(R.id.restartRCWifiServer);
+        restartRCWifiServer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                JSONObject jsonObject = new JSONObject();
+                try {
+                    jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, true);
+                    jsonObject.put(CommConstants.RESPONSE_NAME_START_WIFI_SERVER, true);
+
+                    ipClient.sendData(jsonObject);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        Switch connectServerToArduino = (Switch) getActivity().findViewById(R.id.connectServerToArduino);
+        connectServerToArduino.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                Log.d(LOG_TAG, "Sending RC Connection Request: "+isChecked);
+                JSONObject jsonObject = new JSONObject();
+                try {
+                    jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, true);
+
+                    if (isChecked) {
+                        jsonObject.put(CommConstants.RESPONSE_NAME_CONNECT_TO_RC_CAR, true);
+                    }else{
+                        jsonObject.put(CommConstants.RESPONSE_NAME_DISCONNECT_FROM_RC_CAR, true);
+                    }
+
+                    ipClient.sendData(jsonObject);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        boolean connectViaBluetooth = sharedPreferences.getBoolean("control_robot_via_bluetooth", false);
+
+        if (connectViaBluetooth) {
+            connectDirectlyToArduino.setVisibility(View.VISIBLE);
+        } else {
+            connectDirectlyToArduino.setVisibility(View.GONE);
+        }
     }
 
-    private void showWifiErrorOverlay(){
+    private void showWifiErrorOverlay() {
         final ConstraintLayout constraintLayout = (ConstraintLayout) getActivity().findViewById(R.id.noWifiConnectionOverlay);
         Button connectBtn = (Button) getActivity().findViewById(R.id.connectWifiBtn);
         connectBtn.setOnClickListener(new View.OnClickListener() {
@@ -209,27 +284,27 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
                         Toast.makeText(getActivity(), "Error connecting to your robot Try Again!", Toast.LENGTH_SHORT).show();
                         constraintLayout.setVisibility(View.VISIBLE);
                     }
-                },MainNavFragment.this);
+                }, MainNavFragment.this);
             }
         });
 
         constraintLayout.setVisibility(View.VISIBLE);
     }
 
-    public void closeConnectionWithServer(){
+    public void closeConnectionWithServer() {
         ipClient.closeConnection();
     }
 
-    private void connectToRCCar(){
+    /*private void connectToRCCar() {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
         boolean connectViaBluetooth = sharedPreferences.getBoolean("control_robot_via_bluetooth", false);
 
-        if(connectViaBluetooth) {
+        if (connectViaBluetooth) {
             bluetoothMaster.connectToRCCar();
-        }else{
+        } else {
             JSONObject jsonObject = new JSONObject();
             try {
-                jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS,true);
+                jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, true);
                 jsonObject.put(CommConstants.RESPONSE_NAME_CONNECT_TO_RC_CAR, true);
 
                 ipClient.sendData(jsonObject);
@@ -239,12 +314,12 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
         }
 
         connectedViaBluetooth = connectViaBluetooth;
-    }
+    }*/
 
-    private void transmitJoystickData(String data){
-        if(connectedViaBluetooth){
+    private void transmitJoystickData(String data) {
+        if (connectedViaBluetooth) {
             bluetoothMaster.sendData(data);
-        }else{
+        } else {
             JSONObject jsonObject = new JSONObject();
             try {
                 jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, true);
@@ -259,14 +334,14 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
     @Override
     public void onServerDataReceived(JSONObject jsonObject) {
         try {
-            if(jsonObject.getBoolean(CommConstants.RESPONSE_NAME_SUCCESS)){
+            if (jsonObject.getBoolean(CommConstants.RESPONSE_NAME_SUCCESS)) {
 
-            }else{
-                if(jsonObject.has(CommConstants.RESPONSE_NAME_FLAGS_ARRAY)){
+            } else {
+                if (jsonObject.has(CommConstants.RESPONSE_NAME_FLAGS_ARRAY)) {
                     JSONArray flagsArray = jsonObject.getJSONArray(CommConstants.RESPONSE_NAME_FLAGS_ARRAY);
-                    for(int i=0; i<flagsArray.length(); i++){
+                    for (int i = 0; i < flagsArray.length(); i++) {
                         CommConstants.RESPONSE_DATA_FLAGS_FAILURE flag = CommConstants.RESPONSE_DATA_FLAGS_FAILURE.valueOf(flagsArray.get(i).toString());
-                        switch(flag){
+                        switch (flag) {
                             case MAX_CONN_REACHED:
                                 closeConnectionWithServer();
                                 showWifiErrorOverlay();
