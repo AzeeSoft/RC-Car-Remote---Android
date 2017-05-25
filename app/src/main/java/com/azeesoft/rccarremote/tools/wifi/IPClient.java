@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -17,6 +18,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by azizt on 5/20/2017.
@@ -26,6 +29,9 @@ public class IPClient {
     final String LOG_TAG = "IP CLIENT";
 
     public final static int DEFAULT_PORT = 6060;
+    private final static long defaultCallbackTimeout = 10000;
+
+    private int requestId = 0;
 
     private String serverAddress = "";
     private int serverPort = DEFAULT_PORT;
@@ -39,6 +45,8 @@ public class IPClient {
     private OnServerDisconnectedListener onServerDisconnectedListener;
 
     private static IPClient thisClient;
+
+    private ArrayList<OnResponseReceivedCallback> onResponseReceivedCallbacks = new ArrayList<>();
 
     public static IPClient getIPClient(Context context) {
         if (thisClient == null) {
@@ -87,14 +95,29 @@ public class IPClient {
     }
 
     public void sendData(JSONObject data) {
+        sendData(data, null);
+    }
+
+    public void sendData(JSONObject data, @Nullable OnResponseReceivedCallback onResponseReceivedCallback) {
         if (bufferedWriter != null && clientSocket != null && clientSocket.isConnected()) {
             try {
+                data.put(CommConstants.NAME_CLIENT_REQUEST_ID, requestId);
                 bufferedWriter.write(data + "\n");
                 bufferedWriter.flush();
                 Log.d(LOG_TAG, "Data written");
             } catch (IOException e) {
                 e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
             }
+
+
+            if (onResponseReceivedCallback != null) {
+                onResponseReceivedCallback.setRequestId(requestId);
+                onResponseReceivedCallbacks.add(onResponseReceivedCallback);
+            }
+            requestId++;
+
         }
     }
 
@@ -132,12 +155,12 @@ public class IPClient {
                 new Thread(new ServerListenerRunnable(new BufferedReader(new InputStreamReader(clientSocket.getInputStream())))).start();
 
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, true);
+                jsonObject.put(CommConstants.NAME_SUCCESS, true);
 
                 JSONArray flags = new JSONArray();
                 flags.put(CommConstants.RESPONSE_DATA_FLAGS_SUCCESS.AZEE_IP_HANDSHAKE);
 
-                jsonObject.put(CommConstants.RESPONSE_NAME_MESSAGE, "Initializing Connection");
+                jsonObject.put(CommConstants.NAME_MESSAGE, "Initializing Connection");
 
                 sendData(jsonObject);
 
@@ -180,7 +203,7 @@ public class IPClient {
 
                     if (bufferedReader != null) {
                         String incomingData = bufferedReader.readLine();
-                        if(incomingData==null){
+                        if (incomingData == null) {
                             break;
                         }
 
@@ -194,21 +217,46 @@ public class IPClient {
                                 e.printStackTrace();
                                 jsonObject = new JSONObject();
                                 try {
-                                    jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, false);
+                                    jsonObject.put(CommConstants.NAME_SUCCESS, false);
 
                                     JSONArray flags = new JSONArray();
                                     flags.put(CommConstants.RESPONSE_DATA_FLAGS_FAILURE.NON_JSON_DATA);
 
-                                    jsonObject.put(CommConstants.RESPONSE_NAME_FLAGS_ARRAY, flags);
-                                    jsonObject.put(CommConstants.RESPONSE_NAME_NON_JSON_DATA, incomingData);
+                                    jsonObject.put(CommConstants.NAME_FLAGS_ARRAY, flags);
+                                    jsonObject.put(CommConstants.NAME_NON_JSON_DATA, incomingData);
                                 } catch (JSONException e1) {
                                     e1.printStackTrace();
                                 }
                             }
 
-                            updateOnUIHandler.post(new UpdateUIRunnable(jsonObject));
+                            OnResponseReceivedCallback currentCallback = null;
+                            List<OnResponseReceivedCallback> timedOutCallbacks = new ArrayList<>();
+                            for (OnResponseReceivedCallback callback : onResponseReceivedCallbacks) {
+                                try {
+                                    if(callback.getTimeout()<System.currentTimeMillis() - callback.getInitMillis()){
+                                        timedOutCallbacks.add(callback);
+                                    }
+                                    else if (jsonObject.has(CommConstants.NAME_CLIENT_REQUEST_ID)) {
+                                        if (callback.getRequestId() == jsonObject.getInt(CommConstants.NAME_CLIENT_REQUEST_ID)) {
+                                            currentCallback = callback;
+                                        }
+                                    }
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+
+                            onResponseReceivedCallbacks.removeAll(timedOutCallbacks);
+                            timedOutCallbacks.clear();
+
+                            if (currentCallback != null) {
+                                updateOnUIHandler.post(new UpdateUIResponseReceivedRunnable(currentCallback, jsonObject));
+                                onResponseReceivedCallbacks.remove(currentCallback);
+                            } else {
+                                updateOnUIHandler.post(new UpdateUIRunnable(jsonObject));
+                            }
                         }
-                    }else{
+                    } else {
                         break;
                     }
                 }
@@ -241,6 +289,22 @@ public class IPClient {
         }
     }
 
+    private class UpdateUIResponseReceivedRunnable implements Runnable{
+
+        OnResponseReceivedCallback onResponseReceivedCallback;
+        JSONObject jsonObject;
+
+        public UpdateUIResponseReceivedRunnable(OnResponseReceivedCallback onResponseReceivedCallback, JSONObject jsonObject){
+            this.onResponseReceivedCallback = onResponseReceivedCallback;
+            this.jsonObject = jsonObject;
+        }
+
+        @Override
+        public void run() {
+            onResponseReceivedCallback.onResponseReceived(jsonObject);
+        }
+    }
+
     public interface OnServerConnectedListener {
         void onServerConnectionSucceeded();
 
@@ -253,5 +317,36 @@ public class IPClient {
 
     public interface OnServerDisconnectedListener {
         void onServerDisconnected();
+    }
+
+    public abstract static class OnResponseReceivedCallback {
+        private int requestId;
+        private long initMillis = 0;
+        private long timeout = defaultCallbackTimeout;
+
+        public abstract void onResponseReceived(JSONObject jsonObject);
+
+//        abstract void onResponseTimedOut();
+
+        private void setRequestId(int reqId) {
+            requestId = reqId;
+            initMillis = System.currentTimeMillis();
+        }
+
+        public int getRequestId() {
+            return requestId;
+        }
+
+        public void setTimeout(long timeout) {
+            this.timeout = timeout;
+        }
+
+        public long getTimeout() {
+            return timeout;
+        }
+
+        public long getInitMillis() {
+            return initMillis;
+        }
     }
 }

@@ -23,6 +23,16 @@
         android:singleLine="true"
         android:title="Server's Port" />
 
+    <EditTextPreference
+        android:capitalize="words"
+        android:defaultValue="8086"
+        android:inputType="number"
+        android:key="server_live_stream_port"
+        android:maxLines="1"
+        android:selectAllOnFocus="true"
+        android:singleLine="true"
+        android:title="Server's Live Stream Port" />
+
     <!-- NOTE: Hide buttons to simplify the UI. Users can touch outside the dialog to
          dismiss it. -->
     <!-- NOTE: ListPreference's summary should be set to its value by the activity code. -->

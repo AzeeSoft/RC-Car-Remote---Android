@@ -7,28 +7,32 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.constraint.ConstraintLayout;
-import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.LinearLayout;
+import android.widget.MediaController;
+import android.widget.RelativeLayout;
 import android.widget.Switch;
 import android.widget.Toast;
+import android.widget.VideoView;
 
 import com.azeesoft.rccarremote.R;
 import com.azeesoft.rccarremote.tools.bluetooth.RCBluetoothMaster;
 import com.azeesoft.rccarremote.tools.wifi.CommConstants;
 import com.azeesoft.rccarremote.tools.wifi.IPClient;
+import com.transitionseverywhere.Fade;
+import com.transitionseverywhere.Slide;
+import com.transitionseverywhere.TransitionManager;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.io.IOException;
 
 import io.github.controlwear.virtual.joystick.android.JoystickView;
 
@@ -184,15 +188,25 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
         connectDirectlyToArduino.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if(isChecked){
+                if (isChecked) {
                     bluetoothMaster.connectToRCCar();
                     connectedViaBluetooth = true;
-                }else{
+                } else {
                     bluetoothMaster.closeAllConnections();
                     connectedViaBluetooth = false;
                 }
             }
         });
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        boolean connectViaBluetooth = sharedPreferences.getBoolean("control_robot_via_bluetooth", false);
+
+        if (connectViaBluetooth) {
+            connectDirectlyToArduino.setVisibility(View.VISIBLE);
+        } else {
+            connectDirectlyToArduino.setVisibility(View.GONE);
+        }
+
 
         Button closeConnectionBtn = (Button) getActivity().findViewById(R.id.closeConnectionBtn);
         closeConnectionBtn.setOnClickListener(new View.OnClickListener() {
@@ -208,8 +222,8 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
             public void onClick(View v) {
                 JSONObject jsonObject = new JSONObject();
                 try {
-                    jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, true);
-                    jsonObject.put(CommConstants.RESPONSE_NAME_RESET_WIFI_CONNECTIONS, true);
+                    jsonObject.put(CommConstants.NAME_SUCCESS, true);
+                    jsonObject.put(CommConstants.REQUEST_NAME_RESET_WIFI_CONNECTIONS, true);
 
                     ipClient.sendData(jsonObject);
                 } catch (JSONException e) {
@@ -224,8 +238,8 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
             public void onClick(View v) {
                 JSONObject jsonObject = new JSONObject();
                 try {
-                    jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, true);
-                    jsonObject.put(CommConstants.RESPONSE_NAME_START_WIFI_SERVER, true);
+                    jsonObject.put(CommConstants.NAME_SUCCESS, true);
+                    jsonObject.put(CommConstants.REQUEST_NAME_START_WIFI_SERVER, true);
 
                     ipClient.sendData(jsonObject);
                 } catch (JSONException e) {
@@ -238,15 +252,15 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
         connectServerToArduino.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                Log.d(LOG_TAG, "Sending RC Connection Request: "+isChecked);
+                Log.d(LOG_TAG, "Sending RC Connection Request: " + isChecked);
                 JSONObject jsonObject = new JSONObject();
                 try {
-                    jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, true);
+                    jsonObject.put(CommConstants.NAME_SUCCESS, true);
 
                     if (isChecked) {
-                        jsonObject.put(CommConstants.RESPONSE_NAME_CONNECT_TO_RC_CAR, true);
-                    }else{
-                        jsonObject.put(CommConstants.RESPONSE_NAME_DISCONNECT_FROM_RC_CAR, true);
+                        jsonObject.put(CommConstants.REQUEST_NAME_CONNECT_TO_RC_CAR, true);
+                    } else {
+                        jsonObject.put(CommConstants.REQUEST_NAME_DISCONNECT_FROM_RC_CAR, true);
                     }
 
                     ipClient.sendData(jsonObject);
@@ -256,15 +270,58 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
             }
         });
 
+        Switch liveStreamSwitch = (Switch) getActivity().findViewById(R.id.liveStreamSwitch);
+        liveStreamSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                RelativeLayout rl = (RelativeLayout) getActivity().findViewById(R.id.liveStreamContainer);
 
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        boolean connectViaBluetooth = sharedPreferences.getBoolean("control_robot_via_bluetooth", false);
+                if (isChecked) {
+                    LinearLayout ll = (LinearLayout) getActivity().findViewById(R.id.liveStreamPanel);
+                    TransitionManager.beginDelayedTransition(ll, new Slide(Gravity.TOP));
+                    rl.setVisibility(View.VISIBLE);
 
-        if (connectViaBluetooth) {
-            connectDirectlyToArduino.setVisibility(View.VISIBLE);
-        } else {
-            connectDirectlyToArduino.setVisibility(View.GONE);
-        }
+                    JSONObject jsonObject = new JSONObject();
+                    try {
+                        jsonObject.put(CommConstants.NAME_SUCCESS,true);
+                        jsonObject.put(CommConstants.REQUEST_NAME_START_RTSP_SERVER, true);
+                        ipClient.sendData(jsonObject, new IPClient.OnResponseReceivedCallback(){
+                            @Override
+                            public void onResponseReceived(JSONObject jsonObject) {
+                                try {
+                                    if(jsonObject.getBoolean(CommConstants.NAME_SUCCESS)){
+                                        connectToRTSPStream();
+                                    }else{
+                                        String msg="ERROR_UNKNOWN";
+                                        if(jsonObject.has(CommConstants.NAME_MESSAGE)){
+                                            msg = jsonObject.getString(CommConstants.NAME_MESSAGE);
+                                        }
+                                        Toast.makeText(getActivity(), "Error starting RTSP Server: "+msg, Toast.LENGTH_LONG).show();
+                                    }
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        });
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+
+                    rl.setVisibility(View.GONE);
+
+                    disconnectFromRTSPStream();
+                    JSONObject jsonObject = new JSONObject();
+                    try {
+                        jsonObject.put(CommConstants.NAME_SUCCESS,true);
+                        jsonObject.put(CommConstants.REQUEST_NAME_STOP_RTSP_SERVER, true);
+                        ipClient.sendData(jsonObject);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
     }
 
     private void showWifiErrorOverlay() {
@@ -304,8 +361,8 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
         } else {
             JSONObject jsonObject = new JSONObject();
             try {
-                jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, true);
-                jsonObject.put(CommConstants.RESPONSE_NAME_CONNECT_TO_RC_CAR, true);
+                jsonObject.put(CommConstants.NAME_SUCCESS, true);
+                jsonObject.put(CommConstants.REQUEST_NAME_CONNECT_TO_RC_CAR, true);
 
                 ipClient.sendData(jsonObject);
             } catch (JSONException e) {
@@ -322,8 +379,8 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
         } else {
             JSONObject jsonObject = new JSONObject();
             try {
-                jsonObject.put(CommConstants.RESPONSE_NAME_SUCCESS, true);
-                jsonObject.put(CommConstants.RESPONSE_NAME_ARDUINO_BLUETOOTH_DATA, data);
+                jsonObject.put(CommConstants.NAME_SUCCESS, true);
+                jsonObject.put(CommConstants.REQUEST_NAME_ARDUINO_BLUETOOTH_DATA, data);
                 ipClient.sendData(jsonObject);
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -331,14 +388,33 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
         }
     }
 
+    private void connectToRTSPStream() {
+        VideoView v = (VideoView) getActivity().findViewById(R.id.liveStreamVideoView);
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String serverIP = sp.getString("server_ip_address", " ");
+        String serverLiveStreamPort = sp.getString("server_live_stream_port", " ");
+
+        v.setMediaController(new MediaController(getActivity()));
+
+        v.setVideoURI(Uri.parse("rtsp://" + serverIP + ":" + serverLiveStreamPort + "/"));
+        v.requestFocus();
+        v.start();
+    }
+
+    private void disconnectFromRTSPStream() {
+        VideoView v = (VideoView) getActivity().findViewById(R.id.liveStreamVideoView);
+        v.stopPlayback();
+        v.suspend();
+    }
+
     @Override
     public void onServerDataReceived(JSONObject jsonObject) {
         try {
-            if (jsonObject.getBoolean(CommConstants.RESPONSE_NAME_SUCCESS)) {
+            if (jsonObject.getBoolean(CommConstants.NAME_SUCCESS)) {
 
             } else {
-                if (jsonObject.has(CommConstants.RESPONSE_NAME_FLAGS_ARRAY)) {
-                    JSONArray flagsArray = jsonObject.getJSONArray(CommConstants.RESPONSE_NAME_FLAGS_ARRAY);
+                if (jsonObject.has(CommConstants.NAME_FLAGS_ARRAY)) {
+                    JSONArray flagsArray = jsonObject.getJSONArray(CommConstants.NAME_FLAGS_ARRAY);
                     for (int i = 0; i < flagsArray.length(); i++) {
                         CommConstants.RESPONSE_DATA_FLAGS_FAILURE flag = CommConstants.RESPONSE_DATA_FLAGS_FAILURE.valueOf(flagsArray.get(i).toString());
                         switch (flag) {

@@ -180,6 +180,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity {
             // guidelines.
             bindPreferenceSummaryToValue(findPreference("server_ip_address"));
             bindPreferenceSummaryToValue(findPreference("server_port"));
+            bindPreferenceSummaryToValue(findPreference("server_live_stream_port"));
         }
 
         @Override
