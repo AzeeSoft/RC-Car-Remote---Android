@@ -13,6 +13,10 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
@@ -64,6 +68,8 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
     private RCBluetoothMaster bluetoothMaster;
 
     private boolean connectedViaBluetooth = false;
+
+    WebView liveStreamWebView;
 
     public MainNavFragment() {
         // Required empty public constructor
@@ -284,19 +290,19 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
                     JSONObject jsonObject = new JSONObject();
                     try {
                         jsonObject.put(CommConstants.NAME_SUCCESS,true);
-                        jsonObject.put(CommConstants.REQUEST_NAME_START_RTSP_SERVER, true);
+                        jsonObject.put(CommConstants.REQUEST_NAME_START_HLS_SERVER, true);
                         ipClient.sendData(jsonObject, new IPClient.OnResponseReceivedCallback(){
                             @Override
                             public void onResponseReceived(JSONObject jsonObject) {
                                 try {
                                     if(jsonObject.getBoolean(CommConstants.NAME_SUCCESS)){
-                                        connectToRTSPStream();
+                                        connectToHLSStream();
                                     }else{
                                         String msg="ERROR_UNKNOWN";
                                         if(jsonObject.has(CommConstants.NAME_MESSAGE)){
                                             msg = jsonObject.getString(CommConstants.NAME_MESSAGE);
                                         }
-                                        Toast.makeText(getActivity(), "Error starting RTSP Server: "+msg, Toast.LENGTH_LONG).show();
+                                        Toast.makeText(getActivity(), "Error starting HLS Server: "+msg, Toast.LENGTH_LONG).show();
                                     }
                                 } catch (JSONException e) {
                                     e.printStackTrace();
@@ -310,11 +316,11 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
 
                     rl.setVisibility(View.GONE);
 
-                    disconnectFromRTSPStream();
+                    disconnectFromHLSStream();
                     JSONObject jsonObject = new JSONObject();
                     try {
                         jsonObject.put(CommConstants.NAME_SUCCESS,true);
-                        jsonObject.put(CommConstants.REQUEST_NAME_STOP_RTSP_SERVER, true);
+                        jsonObject.put(CommConstants.REQUEST_NAME_STOP_HLS_SERVER, true);
                         ipClient.sendData(jsonObject);
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -322,6 +328,15 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
                 }
             }
         });
+
+        liveStreamWebView = (WebView) getActivity().findViewById(R.id.liveStreamWebView);
+        liveStreamWebView.getSettings().setJavaScriptEnabled(true);
+        liveStreamWebView.getSettings().setLoadWithOverviewMode(true);
+        liveStreamWebView.getSettings().setUseWideViewPort(true);
+        liveStreamWebView.getSettings().setBuiltInZoomControls(false);
+        liveStreamWebView.getSettings().setDefaultZoom(WebSettings.ZoomDensity.FAR);
+        liveStreamWebView.setWebChromeClient(new WebChromeClient());
+        disconnectFromHLSStream();
     }
 
     private void showWifiErrorOverlay() {
@@ -388,23 +403,22 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
         }
     }
 
-    private void connectToRTSPStream() {
-        VideoView v = (VideoView) getActivity().findViewById(R.id.liveStreamVideoView);
+    private void connectToHLSStream() {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getActivity());
         String serverIP = sp.getString("server_ip_address", " ");
         String serverLiveStreamPort = sp.getString("server_live_stream_port", " ");
 
-        v.setMediaController(new MediaController(getActivity()));
-
-        v.setVideoURI(Uri.parse("rtsp://" + serverIP + ":" + serverLiveStreamPort + "/"));
-        v.requestFocus();
-        v.start();
+        liveStreamWebView.loadUrl("http://"+serverIP+":"+serverLiveStreamPort+"/");
     }
 
-    private void disconnectFromRTSPStream() {
-        VideoView v = (VideoView) getActivity().findViewById(R.id.liveStreamVideoView);
-        v.stopPlayback();
-        v.suspend();
+    private void disconnectFromHLSStream() {
+        liveStreamWebView.loadUrl("about:blank");
+        liveStreamWebView.evaluateJavascript("document.body.style.backgroundColor = \"black\";", new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String value) {
+
+            }
+        });
     }
 
     @Override
