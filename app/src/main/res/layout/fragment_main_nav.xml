@@ -169,7 +169,7 @@
                         android:layout_height="match_parent"
                         android:layout_weight="1"
                         android:orientation="horizontal"
-                        android:visibility="visible">
+                        android:visibility="gone">
 
                         <WebView
                             android:id="@+id/liveStreamWebView"
@@ -191,6 +191,44 @@
 
                 </LinearLayout>
 
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    tools:layout_editor_absoluteX="8dp"
+                    tools:layout_editor_absoluteY="8dp">
+
+                    <LinearLayout
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
+                        android:layout_width="0px"
+                        android:layout_height="0px"/>
+
+                    <EditText
+                        android:id="@+id/speechEditText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:drawableBottom="@color/colorPrimary"
+                        android:drawableTintMode="screen"
+                        android:ems="12"
+                        android:hint="Type here"
+                        android:textColor="@android:color/white"
+                        android:textColorHint="@color/colorPrimary"
+                        android:nextFocusUp="@id/speechEditText"
+                        android:nextFocusLeft="@id/speechEditText" />
+
+                    <Button
+                        android:id="@+id/speakBtn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:backgroundTint="@color/colorPrimary"
+                        android:text="Speak"
+                        android:textColor="@android:color/white" />
+
+                </LinearLayout>
+
             </LinearLayout>
         </ScrollView>
 
@@ -207,7 +245,7 @@
             <ImageView
                 android:id="@+id/imageView2"
                 android:layout_width="0dp"
-                android:layout_height="80dp"
+                android:layout_height="1dp"
                 android:layout_marginTop="64dp"
                 android:tint="@android:color/white"
                 app:layout_constraintHorizontal_bias="0.501"

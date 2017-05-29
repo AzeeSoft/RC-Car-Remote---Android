@@ -19,6 +19,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.MediaController;
 import android.widget.RelativeLayout;
@@ -322,6 +323,27 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
                         jsonObject.put(CommConstants.NAME_SUCCESS,true);
                         jsonObject.put(CommConstants.REQUEST_NAME_STOP_HLS_SERVER, true);
                         ipClient.sendData(jsonObject);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+        Button speakBtn = (Button) getActivity().findViewById(R.id.speakBtn);
+        speakBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EditText speechEditText = (EditText) getActivity().findViewById(R.id.speechEditText);
+                String speechText = speechEditText.getText().toString();
+                if(!speechText.isEmpty()){
+                    JSONObject jsonObject = new JSONObject();
+                    try {
+                        jsonObject.put(CommConstants.NAME_SUCCESS,true);
+                        jsonObject.put(CommConstants.REQUEST_NAME_SPEAK, true);
+                        jsonObject.put(CommConstants.NAME_SPEECH_DATA, speechText);
+                        ipClient.sendData(jsonObject);
+                        speechEditText.setText("");
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
