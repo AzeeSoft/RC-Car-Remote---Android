@@ -31,6 +31,7 @@ import com.azeesoft.rccarremote.R;
 import com.azeesoft.rccarremote.tools.bluetooth.RCBluetoothMaster;
 import com.azeesoft.rccarremote.tools.wifi.CommConstants;
 import com.azeesoft.rccarremote.tools.wifi.IPClient;
+import com.azeesoft.rccarremote.tools.wifi.MicReceiver;
 import com.transitionseverywhere.Fade;
 import com.transitionseverywhere.Slide;
 import com.transitionseverywhere.TransitionManager;
@@ -71,6 +72,8 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
     private boolean connectedViaBluetooth = false;
 
     WebView liveStreamWebView;
+
+    MicReceiver micReceiver;
 
     public MainNavFragment() {
         // Required empty public constructor
@@ -147,6 +150,7 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
         prepareIPClient();
         prepareBluetoothMaster();
         prepareUI();
+        prepareMicReceiver();
     }
 
     private void prepareIPClient() {
@@ -288,6 +292,8 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
                     TransitionManager.beginDelayedTransition(ll, new Slide(Gravity.TOP));
                     rl.setVisibility(View.VISIBLE);
 
+                    startMicReceiver();
+
                     JSONObject jsonObject = new JSONObject();
                     try {
                         jsonObject.put(CommConstants.NAME_SUCCESS,true);
@@ -316,6 +322,8 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
                 } else {
 
                     rl.setVisibility(View.GONE);
+
+                    stopMicReceiver();
 
                     disconnectFromHLSStream();
                     JSONObject jsonObject = new JSONObject();
@@ -359,6 +367,10 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
         liveStreamWebView.getSettings().setDefaultZoom(WebSettings.ZoomDensity.FAR);
         liveStreamWebView.setWebChromeClient(new WebChromeClient());
         disconnectFromHLSStream();
+    }
+
+    private void prepareMicReceiver(){
+        micReceiver = MicReceiver.getMicReceiver();
     }
 
     private void showWifiErrorOverlay() {
@@ -441,6 +453,14 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
 
             }
         });
+    }
+
+    private void startMicReceiver(){
+        micReceiver.startReceiving();
+    }
+
+    private void stopMicReceiver(){
+        micReceiver.stopReceiving();
     }
 
     @Override
