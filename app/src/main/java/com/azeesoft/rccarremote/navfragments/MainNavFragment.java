@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.constraint.ConstraintLayout;
@@ -21,18 +22,15 @@ import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.MediaController;
 import android.widget.RelativeLayout;
 import android.widget.Switch;
 import android.widget.Toast;
-import android.widget.VideoView;
 
 import com.azeesoft.rccarremote.R;
 import com.azeesoft.rccarremote.tools.bluetooth.RCBluetoothMaster;
 import com.azeesoft.rccarremote.tools.wifi.CommConstants;
 import com.azeesoft.rccarremote.tools.wifi.IPClient;
 import com.azeesoft.rccarremote.tools.wifi.MicReceiver;
-import com.transitionseverywhere.Fade;
 import com.transitionseverywhere.Slide;
 import com.transitionseverywhere.TransitionManager;
 
@@ -109,6 +107,16 @@ public class MainNavFragment extends Fragment implements IPClient.OnServerDataRe
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        int SDK_INT = android.os.Build.VERSION.SDK_INT;
+        if (SDK_INT > 8)
+        {
+            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder()
+                    .permitAll().build();
+            StrictMode.setThreadPolicy(policy);
+            //your codes here
+
+        }
+
         // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_main_nav, container, false);
     }

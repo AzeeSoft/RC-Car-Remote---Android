@@ -169,15 +169,8 @@
                         android:layout_height="match_parent"
                         android:layout_weight="1"
                         android:orientation="horizontal"
+                        android:rotation="90"
                         android:visibility="gone">
-
-                        <WebView
-                            android:id="@+id/liveStreamWebView"
-                            android:layout_width="266dp"
-                            android:layout_height="200dp"
-                            android:layout_centerHorizontal="true"
-                            android:layout_marginTop="10dp"
-                            android:background="@android:color/black" />
 
                         <VideoView
                             android:id="@+id/liveStreamVideoView"
@@ -186,6 +179,14 @@
                             android:layout_centerHorizontal="false"
                             android:layout_centerInParent="true"
                             android:visibility="gone" />
+
+                        <WebView
+                            android:id="@+id/liveStreamWebView"
+                            android:layout_width="266dp"
+                            android:layout_height="200dp"
+                            android:layout_centerHorizontal="true"
+                            android:layout_marginTop="10dp"
+                            android:background="@android:color/black" />
 
                     </RelativeLayout>
 
